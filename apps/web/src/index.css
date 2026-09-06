@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@import "primereact/resources/themes/lara-light-blue/theme.css";
+@import "primeicons/primeicons.css";
+
+body {
+  @apply bg-slate-50 text-slate-800;
+}
