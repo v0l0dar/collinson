@@ -69,8 +69,18 @@ npm run build
 ## Deploy
 
 Both the frontend (Cloudflare Pages) and the backend (a Cloudflare
-Worker, same GraphQL server code) are meant to run on Cloudflare so the
-whole app lives on one platform. *(Live links go here once deployed.)*
+Worker, same GraphQL server code) run on Cloudflare, so the whole app
+lives on one platform.
+
+- Web app: https://collinson-weather.pages.dev
+- API: https://collinson-weather-api.8081-bbd.workers.dev/graphql
+
+To redeploy:
+
+```bash
+npm run deploy -w apps/api                                          # Worker
+npm run build -w apps/web && cd apps/web && npx wrangler pages deploy dist --project-name=collinson-weather
+```
 
 ## Time log
 
@@ -80,3 +90,4 @@ brief. Times are wall-clock, not "focused work only."
 | Date | Time | What I did |
 |---|---|---|
 | 2026-09-06 | ~12:00-13:45 | Read the brief, planned the architecture, scaffolded the monorepo, built the GraphQL backend (Open-Meteo integration, 4 scoring functions, tests), built the React frontend (search, loading/error/success states, PrimeReact + Tailwind UI), fixed a dependency version conflict (duplicate Vite/Vitest versions across workspaces) and a styling bug (PrimeReact's own CSS was overriding Tailwind color classes on score badges), verified the app end-to-end in a real browser with Playwright. |
+| 2026-09-06 | ~14:00-14:15 | Pushed to GitHub, deployed the API to a Cloudflare Worker and the frontend to Cloudflare Pages, verified the live deployment end-to-end with Playwright. |
