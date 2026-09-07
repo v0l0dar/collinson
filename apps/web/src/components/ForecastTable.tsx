@@ -1,11 +1,19 @@
 import { Tooltip } from "primereact/tooltip";
+import type { CSSProperties } from "react";
 import type { ActivityScore, PlaceForecast } from "../api/types";
-import { ACTIVITY_NAMES, ACTIVITY_ORDER, formatDate } from "../activityLabels";
-import { ScoreBadge } from "./ScoreBadge";
+import { ACTIVITY_NAMES, ACTIVITY_ORDER, UNAVAILABLE_STYLE } from "../activityLabels";
+import { formatDate, formatPlace } from "../format";
+import { ScoreTile } from "./ScoreTile";
 
 interface ForecastTableProps {
   forecast: PlaceForecast;
 }
+
+// Below md the table keeps its own width and scrolls sideways, so the cells
+// stay readable on a phone. That width has to follow the number of days the
+// API actually sends, not a number tuned to today's seven.
+const ACTIVITY_COL_REM = 7; // matches w-28 on the row-header column
+const DAY_COL_MIN_REM = 5.75; // room for a 2-digit score and its label
 
 // Index of the highest-scoring day for a row, or null when every day is
 // "Not available" (nothing to crown as the best).
@@ -20,29 +28,34 @@ function bestDayIndex(scores: (ActivityScore | undefined)[]): number | null {
 
 export function ForecastTable({ forecast }: ForecastTableProps) {
   const { place, days } = forecast;
-  const region = place.admin1 && place.admin1 !== place.name ? `${place.admin1}, ` : "";
+  const minWidth = `${ACTIVITY_COL_REM + days.length * DAY_COL_MIN_REM}rem`;
 
   return (
     <div className="mt-8">
       {/* One Tooltip instance, attached to every tile via data-pr-tooltip.
-          event="both" opens it on hover and on keyboard focus, so the reasons
-          are not mouse-only. */}
-      <Tooltip target=".score-tip" event="both" className="max-w-xs" showDelay={120} />
+          Left on the default hover event on purpose: with event="both" a
+          focused tile makes PrimeReact drop its mouseleave listener, and the
+          tooltip then stays on screen. Screen readers get the same text from
+          the sr-only span inside each tile instead. */}
+      <Tooltip
+        target=".score-tip"
+        className="max-w-xs"
+        showDelay={120}
+        closeOnEscape
+        autoHide={false}
+      />
 
-      <h2 className="text-lg font-semibold text-slate-800">
-        {place.name}, {region}
-        {place.country}
-      </h2>
+      <h2 className="text-lg font-semibold text-slate-800">{formatPlace(place)}</h2>
       <p className="text-sm text-slate-500">Next 7 days</p>
 
-      {/* table-fixed + w-full keeps the 7 days inside the page from 768px up.
-          Below that the min width brings back a horizontal scroll, so the
-          cells stay readable on a phone. */}
       <div className="mt-4 overflow-x-auto md:overflow-x-visible">
-        <table className="w-full min-w-190 table-fixed border-collapse md:min-w-0">
+        <table
+          className="w-full min-w-(--forecast-min-w) table-fixed border-collapse md:min-w-0"
+          style={{ "--forecast-min-w": minWidth } as CSSProperties}
+        >
           <thead>
             <tr>
-              <th className="w-28 pb-2 text-left text-xs font-medium tracking-wide text-slate-400 uppercase">
+              <th className="w-28 pb-2 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
                 Activity
               </th>
               {days.map((day) => {
@@ -50,7 +63,7 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
                 return (
                   <th key={day.date} className="px-1 pb-2 text-center">
                     <div className="text-sm font-semibold text-slate-700">{weekday}</div>
-                    <div className="text-xs font-normal text-slate-400">{dayLabel}</div>
+                    <div className="text-xs font-normal text-slate-500">{dayLabel}</div>
                   </th>
                 );
               })}
@@ -59,7 +72,8 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
 
           {ACTIVITY_ORDER.map((activity) => {
             const scores = days.map((day) => day.activities.find((a) => a.activity === activity));
-            const allUnavailable = scores.every((score) => score && score.score === null);
+            const allUnavailable =
+              scores.length > 0 && scores.every((score) => score && score.score === null);
             const bestIndex = allUnavailable ? null : bestDayIndex(scores);
 
             return (
@@ -70,15 +84,17 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
                       {ACTIVITY_NAMES[activity]}
                     </div>
                     {bestIndex !== null && (
-                      <div className="mt-0.5 text-xs font-medium text-amber-600">
+                      <div className="mt-0.5 text-xs font-medium text-amber-700">
                         Best: {formatDate(days[bestIndex].date).weekday}
                       </div>
                     )}
                   </th>
                   {allUnavailable ? (
                     <td colSpan={days.length} className="px-1 py-3 align-top">
-                      <div className="rounded-xl bg-slate-50 px-3 py-4 text-center text-sm text-slate-400 ring-1 ring-slate-200 ring-inset">
-                        {(scores[0] as ActivityScore).reasons[0] ?? "Not available here"}
+                      <div
+                        className={`rounded-xl px-3 py-4 text-center text-sm ring-1 ring-inset ${UNAVAILABLE_STYLE}`}
+                      >
+                        {scores[0]?.reasons[0] ?? "Not available here"}
                       </div>
                     </td>
                   ) : (
@@ -87,7 +103,7 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
                       if (!activityScore) return <td key={day.date} className="px-1 py-3" />;
                       return (
                         <td key={day.date} className="px-1 py-3 align-top">
-                          <ScoreBadge activityScore={activityScore} isBest={i === bestIndex} />
+                          <ScoreTile activityScore={activityScore} isBest={i === bestIndex} />
                         </td>
                       );
                     })

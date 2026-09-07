@@ -133,3 +133,50 @@ Found, and verified against real data before fixing, not just by reading:
   arrive, and a "Best: <day>" callout per activity, since the brief's
   verb is "rank" and the table previously only showed comparable numbers
   with no explicit winner.
+
+## Round 4 — table redesign, and reviewing my own redesign (2026-09-08)
+
+- The search field had no icons. Added a search icon at the end of the
+  input and a clear button that replaces it once there is text. Both
+  share the slot PrimeReact's own loading spinner uses, so exactly one
+  of the three is ever visible. The icon needed `z-10`: it renders
+  before the input in the DOM, so the input's background painted over
+  it.
+- The forecast table scrolled sideways at *every* width, not just on a
+  phone. `main` is capped at 768px (736px of content) while the table
+  needed about 920px — seven `w-24` badges, a `whitespace-nowrap`
+  activity column, and 12px column gaps. Switched to `w-full` +
+  `table-fixed`, which cannot overflow, and kept a horizontal scroll
+  below 768px where the cells would otherwise be unreadable.
+- Then the real problem: each cell printed its own reasons, so "No new
+  snow / Too warm for snow" appeared seven times in the skiing row and
+  every row ran about six lines tall. Rebuilt the table as a heatmap of
+  colour-filled tiles and moved the reasons into a hover tooltip.
+- That move would have undone round 3's "reasons must not be hover-only"
+  fix, so the reasons also stay in the DOM as a visually hidden span.
+  Worth writing down why a tooltip alone is not enough: PrimeReact sets
+  `aria-hidden="true"` on its tooltip exactly while it is visible, and
+  never adds an `aria-describedby` link from the target. So the tooltip
+  is invisible to screen readers by construction.
+- Reviewed the round with three independent passes rather than one, since
+  I had just written the code and wanted eyes that were not mine:
+  correctness/React, architecture + KISS/DRY/YAGNI, and types +
+  accessibility. 15 findings, all fixed.
+- The one I would have missed on my own: a tile with `tabIndex={0}` plus
+  a Tooltip with `event="both"` leaves the tooltip stuck on screen. Once
+  any tile takes focus, PrimeReact rebinds its listeners and drops
+  `mouseleave`. Proved it with a control test — `event="hover"` hides,
+  `event="both"` does not — then removed the focus path entirely, which
+  the hidden span had already made unnecessary.
+- Measured contrast instead of eyeballing it. Four colours were under
+  4.5:1, and one was a regression I had introduced an hour earlier: the
+  "Activity" header went from `text-sm text-slate-500` (4.55:1) to
+  `text-xs text-slate-400` (2.51:1) — smaller *and* lighter.
+- The place lookup had no request ordering. Typing fast starts several
+  lookups, and a slow one could overwrite a newer list. Added a request
+  id and a test that fails without it.
+- Turned on `strict` in `tsconfig.app.json`. It cost zero errors on the
+  existing code and immediately caught a real one in new code: typing
+  `AutoComplete<string | Suggestion>` showed that `itemTemplate` can be
+  handed a bare string, which the old `(item: Suggestion)` signature had
+  simply asserted away.

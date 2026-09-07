@@ -132,7 +132,9 @@ information that only reaches part of the audience. Found and fixed:
 - **Score reasons were hover-only.** The tooltip looked like a nice touch
   but meant phone and keyboard users never saw why a day scored the way
   it did, which is the actual answer to "understand the answer" that the
-  brief asks for. Now shown as plain text under the badge.
+  brief asks for. Shown as plain text under the badge from this round on.
+  (Third pass changed *where* that text lives — see below — but it is
+  still real text in the page, not a mouse-only tooltip.)
 - **A misleading reason label**: "Overcast or stormy" showed up next to
   "Dry day" and could never actually fire for a genuinely overcast (but
   dry) day — the threshold only trips for rain/snow/showers/storms.
@@ -173,6 +175,45 @@ I also added: an aria-live region so screen readers announce when
 results arrive, and a "Best: <day>" callout per activity row, since the
 brief's own verb is "rank" and the table was previously just comparable
 numbers with no explicit winner.
+
+## Third pass: table redesign and its own review (2026-09-08)
+
+The score table printed each day's reasons under every badge. With seven
+days that meant "No new snow / Too warm for snow" seven times in one row,
+about six lines per activity, and the numbers were lost in the noise.
+
+- **The table is now a heatmap.** Each cell is a colour-filled tile with
+  the score and its label; `ScoreBadge` became `ScoreTile`, since nothing
+  in it is a badge any more.
+- **Reasons moved into the tile's hover tooltip**, and — this is the part
+  that matters — a visually hidden copy stays in the DOM. PrimeReact
+  marks its tooltip `aria-hidden` while it is open and never links it to
+  the target, so a tooltip alone would have quietly undone the second
+  pass's fix above. The hidden span is what keeps the text real.
+- **The search field got a search icon and a clear button**, sharing one
+  slot with PrimeReact's own loading spinner.
+
+I then reviewed this round the same way as the second pass, and fixed
+what it found:
+
+- A stuck tooltip. Making a tile focusable *and* setting the Tooltip to
+  `event="both"` hits a PrimeReact bug: after any tile takes focus the
+  library rebinds its listeners and drops `mouseleave`, so the tooltip
+  stayed on screen. Dropping the focus path fixed it, and the hidden
+  span meant no accessibility was lost by doing so.
+- Four text colours below the WCAG 4.5:1 minimum, one of them a
+  regression I had just introduced (the "Activity" header went from
+  4.55:1 to 2.51:1). Measured, not guessed.
+- The place lookup had no request ordering, so a slow answer could
+  replace a newer one. Added a request id, plus a test that fails
+  without it.
+- The clear button emptied the field but left the old forecast on
+  screen, with no way back to the start state.
+- A 16x16 px tap target for that button, under the 24x24 minimum.
+- `min-w-190` on the table silently meant "seven days"; it now follows
+  `days.length`.
+- `strict` was off in `tsconfig.app.json`. Turning it on cost zero
+  errors, and it immediately caught a real one in new code.
 
 ## What I cut for time
 
