@@ -24,8 +24,10 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
 
   return (
     <div className="mt-8">
-      {/* One Tooltip instance, attached to every badge via data-pr-tooltip. */}
-      <Tooltip target=".score-tip" />
+      {/* One Tooltip instance, attached to every tile via data-pr-tooltip.
+          event="both" opens it on hover and on keyboard focus, so the reasons
+          are not mouse-only. */}
+      <Tooltip target=".score-tip" event="both" className="max-w-xs" showDelay={120} />
 
       <h2 className="text-lg font-semibold text-slate-800">
         {place.name}, {region}
@@ -37,59 +39,63 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
           Below that the min width brings back a horizontal scroll, so the
           cells stay readable on a phone. */}
       <div className="mt-4 overflow-x-auto md:overflow-x-visible">
-        <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-x-1 border-spacing-y-3 md:min-w-0">
+        <table className="w-full min-w-190 table-fixed border-collapse md:min-w-0">
           <thead>
             <tr>
-              <th className="w-[110px] text-left text-sm font-medium text-slate-500">Activity</th>
+              <th className="w-28 pb-2 text-left text-xs font-medium tracking-wide text-slate-400 uppercase">
+                Activity
+              </th>
               {days.map((day) => {
                 const { weekday, day: dayLabel } = formatDate(day.date);
                 return (
-                  <th key={day.date} className="text-center text-sm font-medium text-slate-500">
-                    <div>{weekday}</div>
+                  <th key={day.date} className="px-1 pb-2 text-center">
+                    <div className="text-sm font-semibold text-slate-700">{weekday}</div>
                     <div className="text-xs font-normal text-slate-400">{dayLabel}</div>
                   </th>
                 );
               })}
             </tr>
           </thead>
-          <tbody>
-            {ACTIVITY_ORDER.map((activity) => {
-              const scores = days.map((day) => day.activities.find((a) => a.activity === activity));
-              const allUnavailable = scores.every((score) => score && score.score === null);
-              const bestIndex = allUnavailable ? null : bestDayIndex(scores);
 
-              return (
-                <tr key={activity}>
-                  <th scope="row" className="py-1 text-left text-sm font-semibold text-slate-800">
-                    {ACTIVITY_NAMES[activity]}
+          {ACTIVITY_ORDER.map((activity) => {
+            const scores = days.map((day) => day.activities.find((a) => a.activity === activity));
+            const allUnavailable = scores.every((score) => score && score.score === null);
+            const bestIndex = allUnavailable ? null : bestDayIndex(scores);
+
+            return (
+              <tbody key={activity} className="border-t border-slate-100">
+                <tr>
+                  <th scope="row" className="py-3 pr-3 text-left align-top">
+                    <div className="text-sm font-semibold text-slate-800">
+                      {ACTIVITY_NAMES[activity]}
+                    </div>
                     {bestIndex !== null && (
-                      <div className="text-[11px] font-normal text-slate-400">
+                      <div className="mt-0.5 text-xs font-medium text-amber-600">
                         Best: {formatDate(days[bestIndex].date).weekday}
                       </div>
                     )}
                   </th>
                   {allUnavailable ? (
-                    <td colSpan={days.length} className="py-1 text-center text-sm text-slate-400 italic">
-                      {(scores[0] as ActivityScore).reasons[0] ?? "Not available here"}
+                    <td colSpan={days.length} className="px-1 py-3 align-top">
+                      <div className="rounded-xl bg-slate-50 px-3 py-4 text-center text-sm text-slate-400 ring-1 ring-slate-200 ring-inset">
+                        {(scores[0] as ActivityScore).reasons[0] ?? "Not available here"}
+                      </div>
                     </td>
                   ) : (
                     days.map((day, i) => {
                       const activityScore = scores[i];
-                      if (!activityScore) return <td key={day.date} />;
+                      if (!activityScore) return <td key={day.date} className="px-1 py-3" />;
                       return (
-                        <td
-                          key={day.date}
-                          className={`py-1 text-center ${i === bestIndex ? "rounded-lg bg-amber-50" : ""}`}
-                        >
-                          <ScoreBadge activityScore={activityScore} />
+                        <td key={day.date} className="px-1 py-3 align-top">
+                          <ScoreBadge activityScore={activityScore} isBest={i === bestIndex} />
                         </td>
                       );
                     })
                   )}
                 </tr>
-              );
-            })}
-          </tbody>
+              </tbody>
+            );
+          })}
         </table>
       </div>
     </div>

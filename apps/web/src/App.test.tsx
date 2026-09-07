@@ -81,8 +81,12 @@ describe("App", () => {
     expect(screen.getByText("90")).toBeInTheDocument();
     // Surfing is "Not available" on every day, so it collapses to one message.
     expect(screen.getByText("This place has no coast")).toBeInTheDocument();
-    // The reason is visible text, not only a hover tooltip.
-    expect(screen.getByText("Fresh snow")).toBeInTheDocument();
+    // Reasons live in the tile's tooltip. The tile is focusable and carries
+    // the same text in aria-label, so they stay reachable without a mouse.
+    const bestTile = screen.getByText("90").closest(".score-tip") as HTMLElement;
+    expect(bestTile).toHaveAttribute("data-pr-tooltip", "Fresh snow");
+    expect(bestTile).toHaveAttribute("tabindex", "0");
+    expect(bestTile).toHaveAttribute("aria-label", "90, Great. Fresh snow");
     // Day 2 scores higher on skiing (90 vs 60), so it should be called out.
     expect(screen.getByText(/Best: Fri/)).toBeInTheDocument();
   });

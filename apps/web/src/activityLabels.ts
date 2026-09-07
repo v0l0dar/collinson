@@ -14,16 +14,18 @@ export const ACTIVITY_ORDER: Activity[] = [
   "INDOOR_SIGHTSEEING",
 ];
 
-// PrimeReact Tag severities per score label, so the badge color comes from
-// the component library's own theme instead of fighting its CSS with
-// custom utility classes.
-export const LABEL_SEVERITY: Record<string, "success" | "info" | "warning" | "danger" | "secondary"> = {
-  Great: "success",
-  OK: "info",
-  Poor: "warning",
-  Bad: "danger",
-  "Not available": "secondary",
+// Tile colours per score label. Soft fills so a full week of them reads as
+// a heatmap without shouting; the label text is always shown too, so the
+// colour is never the only thing carrying the meaning.
+export const LABEL_STYLE: Record<string, string> = {
+  Great: "bg-emerald-100 text-emerald-900 ring-emerald-200",
+  OK: "bg-sky-100 text-sky-900 ring-sky-200",
+  Poor: "bg-amber-100 text-amber-900 ring-amber-200",
+  Bad: "bg-rose-100 text-rose-900 ring-rose-200",
+  "Not available": "bg-slate-50 text-slate-400 ring-slate-200",
 };
+
+export const FALLBACK_LABEL_STYLE = LABEL_STYLE["Not available"];
 
 export function formatDate(isoDate: string): { weekday: string; day: string } {
   const date = new Date(`${isoDate}T00:00:00`);
