@@ -53,6 +53,15 @@ describe("App", () => {
               {
                 date: "2026-01-01",
                 activities: [
+                  { activity: "SKIING", score: 60, label: "OK", reasons: [] },
+                  { activity: "SURFING", score: null, label: "Not available", reasons: ["This place has no coast"] },
+                  { activity: "OUTDOOR_SIGHTSEEING", score: 40, label: "Poor", reasons: [] },
+                  { activity: "INDOOR_SIGHTSEEING", score: 100, label: "Great", reasons: [] },
+                ],
+              },
+              {
+                date: "2026-01-02",
+                activities: [
                   { activity: "SKIING", score: 90, label: "Great", reasons: ["Fresh snow"] },
                   { activity: "SURFING", score: null, label: "Not available", reasons: ["This place has no coast"] },
                   { activity: "OUTDOOR_SIGHTSEEING", score: 40, label: "Poor", reasons: [] },
@@ -72,6 +81,10 @@ describe("App", () => {
     expect(screen.getByText("90")).toBeInTheDocument();
     // Surfing is "Not available" on every day, so it collapses to one message.
     expect(screen.getByText("This place has no coast")).toBeInTheDocument();
+    // The reason is visible text, not only a hover tooltip.
+    expect(screen.getByText("Fresh snow")).toBeInTheDocument();
+    // Day 2 scores higher on skiing (90 vs 60), so it should be called out.
+    expect(screen.getByText(/Best: Fri/)).toBeInTheDocument();
   });
 
   it("shows a network error message when the forecast call fails", async () => {

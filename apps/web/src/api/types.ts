@@ -25,6 +25,6 @@ export interface PlaceInfo {
 }
 
 export interface PlaceForecast {
-  place: PlaceInfo;
+  place: Pick<PlaceInfo, "name" | "country" | "admin1">;
   days: DayForecast[];
 }

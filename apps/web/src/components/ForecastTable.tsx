@@ -7,6 +7,17 @@ interface ForecastTableProps {
   forecast: PlaceForecast;
 }
 
+// Index of the highest-scoring day for a row, or null when every day is
+// "Not available" (nothing to crown as the best).
+function bestDayIndex(scores: (ActivityScore | undefined)[]): number | null {
+  let best: number | null = null;
+  scores.forEach((score, i) => {
+    if (!score || score.score === null) return;
+    if (best === null || (scores[best]?.score ?? -1) < score.score) best = i;
+  });
+  return best;
+}
+
 export function ForecastTable({ forecast }: ForecastTableProps) {
   const { place, days } = forecast;
   const region = place.admin1 && place.admin1 !== place.name ? `${place.admin1}, ` : "";
@@ -42,11 +53,17 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
             {ACTIVITY_ORDER.map((activity) => {
               const scores = days.map((day) => day.activities.find((a) => a.activity === activity));
               const allUnavailable = scores.every((score) => score && score.score === null);
+              const bestIndex = allUnavailable ? null : bestDayIndex(scores);
 
               return (
                 <tr key={activity}>
                   <th scope="row" className="py-1 text-left text-sm font-semibold text-slate-800 whitespace-nowrap">
                     {ACTIVITY_NAMES[activity]}
+                    {bestIndex !== null && (
+                      <div className="text-[11px] font-normal text-slate-400">
+                        Best: {formatDate(days[bestIndex].date).weekday}
+                      </div>
+                    )}
                   </th>
                   {allUnavailable ? (
                     <td colSpan={days.length} className="py-1 text-center text-sm text-slate-400 italic">
@@ -57,7 +74,10 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
                       const activityScore = scores[i];
                       if (!activityScore) return <td key={day.date} />;
                       return (
-                        <td key={day.date} className="py-1 text-center">
+                        <td
+                          key={day.date}
+                          className={`py-1 text-center ${i === bestIndex ? "rounded-lg bg-amber-50" : ""}`}
+                        >
                           <ScoreBadge activityScore={activityScore} />
                         </td>
                       );
@@ -69,7 +89,6 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-slate-400">Hover a score to see why.</p>
     </div>
   );
 }

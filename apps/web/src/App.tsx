@@ -40,11 +40,15 @@ function App() {
         <PlaceSearch loading={status === "loading"} onSelect={search} />
       </div>
 
-      {status === "loading" && <LoadingSkeleton />}
-      {status === "error" && error && (
-        <ErrorState code={error.code} message={error.message} onRetry={() => lastPlace && search(lastPlace)} />
-      )}
-      {status === "success" && forecast && <ForecastTable forecast={forecast} />}
+      {/* Announces state changes to screen readers, since the table only
+          exists after a place is picked. */}
+      <div aria-live="polite">
+        {status === "loading" && <LoadingSkeleton />}
+        {status === "error" && error && (
+          <ErrorState code={error.code} message={error.message} onRetry={() => lastPlace && search(lastPlace)} />
+        )}
+        {status === "success" && forecast && <ForecastTable forecast={forecast} />}
+      </div>
     </main>
   );
 }

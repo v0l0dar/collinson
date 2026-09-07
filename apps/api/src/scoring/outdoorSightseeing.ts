@@ -35,7 +35,7 @@ export function scoreOutdoorSightseeing(day: DailyWeather): ActivityScoreResult 
     { score: temp, weight: 0.35 },
     { score: dry, weight: 0.25, goodReason: "Dry day", badReason: "Rainy" },
     { score: wind, weight: 0.15, badReason: "Windy" },
-    { score: sky, weight: 0.25, goodReason: "Clear sky", badReason: "Overcast or stormy" },
+    { score: sky, weight: 0.25, goodReason: "Clear sky", badReason: "Rain, snow, or storms" },
   ]);
 
   return {

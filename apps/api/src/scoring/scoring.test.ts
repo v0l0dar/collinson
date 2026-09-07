@@ -10,10 +10,10 @@ const baseDay: DailyWeather = {
   tempMax: 15,
   tempMin: 5,
   precipitationSum: 0,
+  rainSum: 0,
   snowfallSum: 0,
   windSpeedMax: 10,
   weatherCode: 0,
-  uvIndexMax: 3,
   waveHeightMax: null,
   wavePeriodMax: null,
 };
@@ -28,9 +28,26 @@ describe("scoreSkiing", () => {
   });
 
   it("scores a warm, snowless, rainy day poorly", () => {
-    const day: DailyWeather = { ...baseDay, tempMax: 12, snowfallSum: 0, precipitationSum: 10 };
+    const day: DailyWeather = { ...baseDay, tempMax: 12, snowfallSum: 0, rainSum: 10 };
     const result = scoreSkiing(day);
     expect(result.score).toBeLessThan(50);
+  });
+
+  // Regression test: precipitation_sum (mm) includes snow's water content,
+  // so a pure-snow day used to look "rainy" once snowfall_sum (cm) was
+  // subtracted from it — comparing two different units. rain_sum is
+  // Open-Meteo's own rain-only figure and should be used directly.
+  it("does not treat a pure-snow day as rainy", () => {
+    const day: DailyWeather = {
+      ...baseDay,
+      tempMax: -4,
+      snowfallSum: 13.86,
+      precipitationSum: 19.8, // includes snow's water content
+      rainSum: 0, // no actual rain fell
+    };
+    const result = scoreSkiing(day);
+    expect(result.reasons).not.toContain("Rainy, not snowy");
+    expect(result.score).toBeGreaterThanOrEqual(75);
   });
 });
 

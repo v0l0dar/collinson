@@ -7,14 +7,15 @@ interface ErrorStateProps {
   onRetry: () => void;
 }
 
-const FRIENDLY_TEXT: Record<string, string> = {
-  PLACE_NOT_FOUND: "We cannot find this place. Please check the name and try again.",
-  UPSTREAM_ERROR: "The weather service did not answer. Please try again.",
+// Only the client-only failure needs its own copy here. Server-raised
+// errors (e.g. UPSTREAM_ERROR) already carry a user-facing message from
+// the API — reusing it avoids two owners drifting on the same sentence.
+const CLIENT_ONLY_TEXT: Record<string, string> = {
   NETWORK_ERROR: "We could not reach the server. Please check your connection.",
 };
 
 export function ErrorState({ code, message, onRetry }: ErrorStateProps) {
-  const text = FRIENDLY_TEXT[code] ?? message;
+  const text = CLIENT_ONLY_TEXT[code] ?? message;
 
   return (
     <div className="mt-6 flex flex-col items-start gap-3">

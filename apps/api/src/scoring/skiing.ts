@@ -8,10 +8,11 @@ export function scoreSkiing(day: DailyWeather): ActivityScoreResult {
   const snow = linearScore(day.snowfallSum, 0, 10);
   const cold = linearScore(day.tempMax, 8, -2);
   const wind = linearScore(day.windSpeedMax, 50, 10);
-  // precipitation_sum from Open-Meteo includes snow's water content, so we
-  // only treat it as a bad sign (rain) when little of it fell as snow.
-  const rainAmount = Math.max(0, day.precipitationSum - day.snowfallSum);
-  const dry = linearScore(rainAmount, 15, 0);
+  // rain_sum (mm) is Open-Meteo's own rain-only figure, already separate
+  // from snowfall_sum (cm) — no unit conversion needed or possible between
+  // the two, so we read it directly instead of subtracting one from
+  // the other.
+  const dry = linearScore(day.rainSum, 15, 0);
 
   const { score, reasons } = combineFactors([
     { score: snow, weight: 0.4, goodReason: "Fresh snow", badReason: "No new snow" },

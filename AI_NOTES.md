@@ -39,9 +39,11 @@ OK / Poor / Bad). The code for this lives in `apps/api/src/scoring/`, one
 file per activity, plus `helpers.ts` for the shared math.
 
 - **Skiing**: fresh snowfall (40%), cold enough (25%), dry not rainy
-  (15%), calm wind (20%). Open-Meteo's `precipitation_sum` includes snow's
-  water content, so I only count precipitation as a bad sign (rain) once
-  I subtract the part that fell as snow.
+  (15%), calm wind (20%). First version subtracted `snowfall_sum` (cm)
+  from `precipitation_sum` (mm) to estimate rain — that mixes two
+  different units and quietly punished pure-powder days for imaginary
+  rain. Fixed by reading Open-Meteo's own `rain_sum` (mm, rain only)
+  directly instead of deriving it.
 - **Surfing**: wave height (50%), wave period (30%), calm wind (20%). Wave
   height uses a "sweet spot" shape (both too flat and too big score low),
   centered on 1.0-2.2m, since that is a reasonable target for an average
@@ -108,6 +110,69 @@ that list.
    the backend needed Cloudflare regardless — putting the frontend there
    too avoids managing two providers and two CORS configurations for one
    small app.
+
+## Second pass: self-review (2026-09-07)
+
+I went back through the code looking specifically for the kind of mistakes
+that are easy to make and easy to miss — wrong units, swallowed errors,
+information that only reaches part of the audience. Found and fixed:
+
+- **Unit mismatch in skiing's rain math** (see above): mixed cm and mm.
+  Caught by checking a real pure-snow day's numbers by hand instead of
+  trusting that the formula looked reasonable.
+- **`fetchMarine` was swallowing every error, not just "no coast".** I had
+  written a `try/catch` meaning to catch the specific "this point is
+  outside the marine grid" case, but it caught real network failures too
+  — a genuine outage would have shown "This place has no coast" for a
+  real coastal town. I checked this against live data (Mongolia, the
+  Sahara, and deliberately invalid coordinates) and confirmed "no coast"
+  is always a plain HTTP 200 with `null` values, never an error — so the
+  error path can now be let through honestly, same as every other
+  Open-Meteo call.
+- **Score reasons were hover-only.** The tooltip looked like a nice touch
+  but meant phone and keyboard users never saw why a day scored the way
+  it did, which is the actual answer to "understand the answer" that the
+  brief asks for. Now shown as plain text under the badge.
+- **A misleading reason label**: "Overcast or stormy" showed up next to
+  "Dry day" and could never actually fire for a genuinely overcast (but
+  dry) day — the threshold only trips for rain/snow/showers/storms.
+  Renamed to match what it actually detects.
+- **Unused data**: `uv_index_max` was fetched and typed but no scorer
+  read it, and a `latitude`/`longitude` selection in the frontend's
+  forecast query was never rendered. Removed both rather than keep code
+  a reader has to double-check for no reason.
+- **Duplicated, drifting error copy**: the frontend had its own copy of
+  the server's error text, including a `PLACE_NOT_FOUND` mapping for an
+  error the backend can no longer raise (dead since the autocomplete
+  redesign). The client now only owns the one error it originates
+  (`NETWORK_ERROR`); anything the server raises uses the server's own
+  message.
+- **A loud, unreadable test log**: PrimeReact injects CSS at runtime that
+  jsdom cannot parse, which prints thousands of lines per test run and
+  could hide a real failure. Tried three fixes — a `console.error`
+  override in `setupTests.ts`, a custom jsdom `virtualConsole` with
+  `omitJSDOMErrors` passed via Vitest's `environmentOptions`, and
+  Vitest's own `onConsoleLog` config hook — and none of them caught it.
+  Traced why: Vitest runs each test file in a forked child process, and
+  jsdom auto-wires its own `VirtualConsole` straight to that process's
+  real `console` before any of those hooks can run or before the wiring
+  can cross the process boundary (a live `VirtualConsole` instance can't
+  even be sent to the fork — it holds closures, which fail Node's
+  structured-clone). A real fix likely needs a different Vitest `pool`
+  mode, which is a bigger change than this cosmetic issue justifies —
+  cut for time rather than risk a piped/grepped test command quietly
+  swallowing a real exit code, which would recreate the exact problem
+  this was meant to fix.
+- **No shape-checking on Open-Meteo's response**: `fetchJson` returned
+  `any`, and a missing/`null` value would have quietly flowed into the
+  scoring math as 0. Added a small check (no new dependency) that treats
+  a malformed or incomplete response as an upstream error instead of a
+  wrong score.
+
+I also added: an aria-live region so screen readers announce when
+results arrive, and a "Best: <day>" callout per activity row, since the
+brief's own verb is "rank" and the table was previously just comparable
+numbers with no explicit winner.
 
 ## What I cut for time
 

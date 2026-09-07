@@ -21,8 +21,6 @@ const FORECAST_QUERY = `
         name
         country
         admin1
-        latitude
-        longitude
       }
       days {
         date

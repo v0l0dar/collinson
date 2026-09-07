@@ -88,6 +88,17 @@ describe("searchPlaces query", () => {
   });
 });
 
+const VALID_FORECAST_DAILY = {
+  time: ["2026-01-01"],
+  weathercode: [0],
+  temperature_2m_max: [10],
+  temperature_2m_min: [2],
+  precipitation_sum: [0],
+  rain_sum: [0],
+  snowfall_sum: [0],
+  windspeed_10m_max: [10],
+};
+
 describe("forecast query", () => {
   it("returns UPSTREAM_ERROR when Open-Meteo is unreachable", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
@@ -100,5 +111,28 @@ describe("forecast query", () => {
     });
 
     expect(result.errors?.[0]?.extensions?.code).toBe("UPSTREAM_ERROR");
+  });
+
+  // Regression test: a real Marine API outage used to be swallowed and
+  // shown as "This place has no coast" for a real coastal town — it must
+  // fail honestly instead, like every other Open-Meteo call.
+  it("returns UPSTREAM_ERROR when only the Marine API is down, not a fake 'no coast'", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("marine-api")) throw new Error("marine outage");
+        return jsonResponse({ daily: VALID_FORECAST_DAILY });
+      }),
+    );
+
+    const result = await query(FORECAST_QUERY, {
+      latitude: 43.48,
+      longitude: -1.56,
+      name: "Biarritz",
+      country: "France",
+    });
+
+    expect(result.errors?.[0]?.extensions?.code).toBe("UPSTREAM_ERROR");
+    expect(result.data).toBeNull();
   });
 });

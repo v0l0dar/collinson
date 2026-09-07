@@ -50,24 +50,45 @@ interface ForecastDaily {
   temperature_2m_max: number[];
   temperature_2m_min: number[];
   precipitation_sum: number[];
+  rain_sum: number[];
   snowfall_sum: number[];
   windspeed_10m_max: number[];
-  uv_index_max: number[];
+}
+
+const FORECAST_FIELDS = [
+  "weathercode",
+  "temperature_2m_max",
+  "temperature_2m_min",
+  "precipitation_sum",
+  "rain_sum",
+  "snowfall_sum",
+  "windspeed_10m_max",
+];
+
+// Open-Meteo marks a missing reading as `null`, which would otherwise flow
+// straight into the scoring math as a falsy 0 — a quietly wrong score
+// instead of an honest "try again". This only checks the fields we treat
+// as always-present; marine wave values are allowed to be null (that is
+// the "no coast" signal, not a data problem).
+function assertNoGaps(daily: Record<string, unknown>, fields: string[]): void {
+  const days = daily.time;
+  if (!Array.isArray(days) || days.length === 0) {
+    throw new UpstreamError('Open-Meteo returned no "time" values');
+  }
+  for (const field of fields) {
+    const values = daily[field];
+    if (!Array.isArray(values) || values.length !== days.length || values.some((v) => v === null || v === undefined)) {
+      throw new UpstreamError(`Open-Meteo returned an incomplete "${field}" reading`);
+    }
+  }
 }
 
 async function fetchForecast(latitude: number, longitude: number): Promise<ForecastDaily> {
-  const params = [
-    "weathercode",
-    "temperature_2m_max",
-    "temperature_2m_min",
-    "precipitation_sum",
-    "snowfall_sum",
-    "windspeed_10m_max",
-    "uv_index_max",
-  ].join(",");
-  const url = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&daily=${params}&timezone=auto&forecast_days=7`;
+  const url = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&daily=${FORECAST_FIELDS.join(",")}&timezone=auto&forecast_days=7`;
   const data = await fetchJson(url);
-  return data.daily as ForecastDaily;
+  const daily = data?.daily ?? {};
+  assertNoGaps(daily, FORECAST_FIELDS);
+  return daily as ForecastDaily;
 }
 
 interface MarineDaily {
@@ -76,19 +97,20 @@ interface MarineDaily {
 }
 
 // Marine data only exists near coasts. Inland places return HTTP 200 with
-// every value set to null (not an error) — we treat that the same as "no
-// marine data available" so surfing can be marked "Not available" instead
-// of scored.
-async function fetchMarine(latitude: number, longitude: number): Promise<MarineDaily | null> {
+// every value set to null (verified against Mongolia, the Sahara, and
+// other inland points) — that is the only "no coast" signal we rely on.
+// A real outage (network error, 5xx) should fail like any other Open-Meteo
+// call, not be silently read as "no coast".
+async function fetchMarine(latitude: number, longitude: number): Promise<MarineDaily> {
   const url = `${MARINE_URL}?latitude=${latitude}&longitude=${longitude}&daily=wave_height_max,wave_period_max&timezone=auto&forecast_days=7`;
-  try {
-    const data = await fetchJson(url);
-    return data.daily as MarineDaily;
-  } catch {
-    // Some inland coordinates are rejected outright by the marine grid.
-    // That is a "no coast" case for us, not a fatal error.
-    return null;
+  const data = await fetchJson(url);
+  const daily = data?.daily ?? {};
+  // Values themselves may legitimately be null (no coast) — only the
+  // shape is checked here, not the contents.
+  if (!Array.isArray(daily.wave_height_max) || !Array.isArray(daily.wave_period_max)) {
+    throw new UpstreamError("Open-Meteo returned an unexpected marine response shape");
   }
+  return daily as MarineDaily;
 }
 
 export async function fetchWeek(latitude: number, longitude: number): Promise<DailyWeather[]> {
@@ -102,11 +124,11 @@ export async function fetchWeek(latitude: number, longitude: number): Promise<Da
     tempMax: forecast.temperature_2m_max[i],
     tempMin: forecast.temperature_2m_min[i],
     precipitationSum: forecast.precipitation_sum[i],
+    rainSum: forecast.rain_sum[i],
     snowfallSum: forecast.snowfall_sum[i],
     windSpeedMax: forecast.windspeed_10m_max[i],
     weatherCode: forecast.weathercode[i],
-    uvIndexMax: forecast.uv_index_max[i],
-    waveHeightMax: marine?.wave_height_max[i] ?? null,
-    wavePeriodMax: marine?.wave_period_max[i] ?? null,
+    waveHeightMax: marine.wave_height_max[i],
+    wavePeriodMax: marine.wave_period_max[i],
   }));
 }

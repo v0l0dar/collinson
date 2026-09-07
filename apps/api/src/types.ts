@@ -4,13 +4,6 @@ export type Activity =
   | "OUTDOOR_SIGHTSEEING"
   | "INDOOR_SIGHTSEEING";
 
-export const ACTIVITIES: Activity[] = [
-  "SKIING",
-  "SURFING",
-  "OUTDOOR_SIGHTSEEING",
-  "INDOOR_SIGHTSEEING",
-];
-
 export interface PlaceInfo {
   name: string;
   country: string;
@@ -24,10 +17,10 @@ export interface DailyWeather {
   tempMax: number;
   tempMin: number;
   precipitationSum: number;
+  rainSum: number;
   snowfallSum: number;
   windSpeedMax: number;
   weatherCode: number;
-  uvIndexMax: number;
   waveHeightMax: number | null;
   wavePeriodMax: number | null;
 }
