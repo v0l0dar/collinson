@@ -12,7 +12,7 @@ export function ScoreBadge({ activityScore }: ScoreBadgeProps) {
   const tooltip = reasons.join(". ");
 
   return (
-    <div className="flex w-24 flex-col items-center gap-1.5 text-center">
+    <div className="flex w-full flex-col items-center gap-1.5 text-center">
       <span className="score-tip" data-pr-tooltip={tooltip || undefined} data-pr-position="top">
         <Tag severity={severity} value={score === null ? label : `${score}`} rounded />
       </span>

@@ -33,11 +33,14 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
       </h2>
       <p className="text-sm text-slate-500">Next 7 days</p>
 
-      <div className="mt-4 overflow-x-auto">
-        <table className="min-w-full border-separate border-spacing-x-3 border-spacing-y-3">
+      {/* table-fixed + w-full keeps the 7 days inside the page from 768px up.
+          Below that the min width brings back a horizontal scroll, so the
+          cells stay readable on a phone. */}
+      <div className="mt-4 overflow-x-auto md:overflow-x-visible">
+        <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-x-1 border-spacing-y-3 md:min-w-0">
           <thead>
             <tr>
-              <th className="text-left text-sm font-medium text-slate-500">Activity</th>
+              <th className="w-[110px] text-left text-sm font-medium text-slate-500">Activity</th>
               {days.map((day) => {
                 const { weekday, day: dayLabel } = formatDate(day.date);
                 return (
@@ -57,7 +60,7 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
 
               return (
                 <tr key={activity}>
-                  <th scope="row" className="py-1 text-left text-sm font-semibold text-slate-800 whitespace-nowrap">
+                  <th scope="row" className="py-1 text-left text-sm font-semibold text-slate-800">
                     {ACTIVITY_NAMES[activity]}
                     {bestIndex !== null && (
                       <div className="text-[11px] font-normal text-slate-400">
