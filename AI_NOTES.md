@@ -76,11 +76,16 @@ that list.
    `label: "Not available"` for surfing in that case, and the frontend
    shows that plainly instead of a misleading low number.
 
-3. **What if the place name is ambiguous** (e.g., more than one "Paris")?
-   Assumption: I take Open-Meteo's top geocoding result, which it ranks by
-   relevance and population. I did not build a disambiguation picker
-   (e.g., "did you mean Paris, France or Paris, Texas?") — that is a real
-   product decision I would normally check, and I am cutting it for time.
+3. **What if the place name is ambiguous** (e.g., more than one "Odessa")?
+   First pass: I took Open-Meteo's top geocoding result and moved on. In
+   practice that felt bad to use — typing "Ode" would silently resolve to
+   whichever Odessa/Odense Open-Meteo ranks first, with no way to tell it
+   meant a different one. I replaced free-text search with a
+   `searchPlaces(query)` query that returns real candidates as the user
+   types (debounced, via a PrimeReact `AutoComplete`), each labeled with
+   its region, e.g. "Odesa, Ukraine" vs "Odessa, Texas, United States".
+   `forecast` now takes the exact latitude/longitude/name/country the user
+   picked, so there is no guessing left on the backend at all.
 
 4. **How much history/skill level should scoring assume?**
    Assumption: none. There is no snow depth or base data in Open-Meteo, so
@@ -106,7 +111,6 @@ that list.
 
 ## What I cut for time
 
-- No place picker for ambiguous names (see above).
 - No caching of Open-Meteo responses — every search is a fresh live call,
   as the exercise allows ("calling Open-Meteo per request is fine here").
 - No dark mode / responsive polish beyond a horizontally scrolling table

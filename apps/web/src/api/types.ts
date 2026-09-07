@@ -19,6 +19,7 @@ export interface DayForecast {
 export interface PlaceInfo {
   name: string;
   country: string;
+  admin1: string | null;
   latitude: number;
   longitude: number;
 }

@@ -14,6 +14,7 @@ export const ACTIVITIES: Activity[] = [
 export interface PlaceInfo {
   name: string;
   country: string;
+  admin1: string | null;
   latitude: number;
   longitude: number;
 }
@@ -41,13 +42,6 @@ export interface ActivityScoreResult {
 export interface DayForecastResult {
   date: string;
   activities: ActivityScoreResult[];
-}
-
-export class PlaceNotFoundError extends Error {
-  constructor(place: string) {
-    super(`Place not found: ${place}`);
-    this.name = "PlaceNotFoundError";
-  }
 }
 
 export class UpstreamError extends Error {

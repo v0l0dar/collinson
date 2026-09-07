@@ -1,11 +1,12 @@
 import { createGraphQLError, createSchema } from "graphql-yoga";
-import { geocodePlace, fetchWeek } from "./openMeteo.js";
+import { searchPlaces, fetchWeek } from "./openMeteo.js";
 import { scoreDay } from "./scoring/index.js";
-import { PlaceNotFoundError, UpstreamError } from "./types.js";
+import { UpstreamError } from "./types.js";
 
 const typeDefs = /* GraphQL */ `
   type Query {
-    forecast(place: String!): PlaceForecast!
+    searchPlaces(query: String!): [PlaceInfo!]!
+    forecast(latitude: Float!, longitude: Float!, name: String!, country: String!): PlaceForecast!
   }
 
   type PlaceForecast {
@@ -16,6 +17,7 @@ const typeDefs = /* GraphQL */ `
   type PlaceInfo {
     name: String!
     country: String!
+    admin1: String
     latitude: Float!
     longitude: Float!
   }
@@ -40,36 +42,46 @@ const typeDefs = /* GraphQL */ `
   }
 `;
 
+function upstreamOrRethrow(error: unknown, message: string): never {
+  if (error instanceof UpstreamError) {
+    throw createGraphQLError(message, { extensions: { code: "UPSTREAM_ERROR" } });
+  }
+  throw error;
+}
+
 export const schema = createSchema({
   typeDefs,
   resolvers: {
     Query: {
-      forecast: async (_parent: unknown, args: { place: string }) => {
-        const place = args.place.trim();
-        if (!place) {
-          throw createGraphQLError("Please enter a place name.", {
-            extensions: { code: "PLACE_NOT_FOUND" },
-          });
-        }
+      // The frontend calls this as the user types, so a place is always
+      // picked from real candidates instead of us silently guessing.
+      searchPlaces: async (_parent: unknown, args: { query: string }) => {
+        const query = args.query.trim();
+        if (query.length < 2) return [];
         try {
-          const placeInfo = await geocodePlace(place);
-          const days = await fetchWeek(placeInfo);
+          return await searchPlaces(query);
+        } catch (error) {
+          upstreamOrRethrow(error, "The place search did not answer. Please try again.");
+        }
+      },
+      forecast: async (
+        _parent: unknown,
+        args: { latitude: number; longitude: number; name: string; country: string },
+      ) => {
+        try {
+          const days = await fetchWeek(args.latitude, args.longitude);
           return {
-            place: placeInfo,
+            place: {
+              name: args.name,
+              country: args.country,
+              admin1: null,
+              latitude: args.latitude,
+              longitude: args.longitude,
+            },
             days: days.map(scoreDay),
           };
         } catch (error) {
-          if (error instanceof PlaceNotFoundError) {
-            throw createGraphQLError(`We cannot find "${place}".`, {
-              extensions: { code: "PLACE_NOT_FOUND" },
-            });
-          }
-          if (error instanceof UpstreamError) {
-            throw createGraphQLError("The weather service did not answer. Please try again.", {
-              extensions: { code: "UPSTREAM_ERROR" },
-            });
-          }
-          throw error;
+          upstreamOrRethrow(error, "The weather service did not answer. Please try again.");
         }
       },
     },

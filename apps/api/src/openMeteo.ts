@@ -1,4 +1,4 @@
-import { DailyWeather, PlaceInfo, PlaceNotFoundError, UpstreamError } from "./types.js";
+import { DailyWeather, PlaceInfo, UpstreamError } from "./types.js";
 
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -7,6 +7,7 @@ const MARINE_URL = "https://marine-api.open-meteo.com/v1/marine";
 interface GeocodingResult {
   name: string;
   country?: string;
+  admin1?: string;
   latitude: number;
   longitude: number;
 }
@@ -28,22 +29,19 @@ async function fetchJson(url: string): Promise<any> {
   return response.json();
 }
 
-// Finds a place by name. Open-Meteo ranks results by relevance/population,
-// so we take the first (best) match. Ambiguous names (e.g. "Paris") are not
-// disambiguated further — see AI_NOTES.md.
-export async function geocodePlace(place: string): Promise<PlaceInfo> {
-  const url = `${GEOCODING_URL}?name=${encodeURIComponent(place)}&count=1&language=en&format=json`;
+// Returns place candidates for a (partial) name, e.g. "Ode" matches both
+// Odesa, Ukraine and Odessa, Texas. The caller picks the exact one instead
+// of us silently guessing the "best" match.
+export async function searchPlaces(query: string, count = 5): Promise<PlaceInfo[]> {
+  const url = `${GEOCODING_URL}?name=${encodeURIComponent(query)}&count=${count}&language=en&format=json`;
   const data: GeocodingResponse = await fetchJson(url);
-  const first = data.results?.[0];
-  if (!first) {
-    throw new PlaceNotFoundError(place);
-  }
-  return {
-    name: first.name,
-    country: first.country ?? "",
-    latitude: first.latitude,
-    longitude: first.longitude,
-  };
+  return (data.results ?? []).map((r) => ({
+    name: r.name,
+    country: r.country ?? "",
+    admin1: r.admin1 ?? null,
+    latitude: r.latitude,
+    longitude: r.longitude,
+  }));
 }
 
 interface ForecastDaily {
@@ -93,12 +91,10 @@ async function fetchMarine(latitude: number, longitude: number): Promise<MarineD
   }
 }
 
-export async function fetchWeek(
-  place: PlaceInfo,
-): Promise<DailyWeather[]> {
+export async function fetchWeek(latitude: number, longitude: number): Promise<DailyWeather[]> {
   const [forecast, marine] = await Promise.all([
-    fetchForecast(place.latitude, place.longitude),
-    fetchMarine(place.latitude, place.longitude),
+    fetchForecast(latitude, longitude),
+    fetchMarine(latitude, longitude),
   ]);
 
   return forecast.time.map((date, i) => ({
