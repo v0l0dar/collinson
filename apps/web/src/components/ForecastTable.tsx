@@ -1,7 +1,12 @@
 import { Tooltip } from "primereact/tooltip";
 import type { CSSProperties } from "react";
 import type { ActivityScore, PlaceForecast } from "../api/types";
-import { ACTIVITY_NAMES, ACTIVITY_ORDER, UNAVAILABLE_STYLE } from "../activityLabels";
+import {
+  ACTIVITY_NAMES,
+  ACTIVITY_ORDER,
+  UNAVAILABLE_STYLE,
+  isWorthRecommending,
+} from "../activityLabels";
 import { formatDate, formatPlace } from "../format";
 import { ScoreTile } from "./ScoreTile";
 
@@ -24,6 +29,16 @@ function bestDayIndex(scores: (ActivityScore | undefined)[]): number | null {
     if (best === null || (scores[best]?.score ?? -1) < score.score) best = i;
   });
   return best;
+}
+
+// The best day, but only when it is actually worth going out for. A week of
+// "Poor" days has a highest score, yet naming one of them "Best" would read
+// as advice to go.
+function recommendedDayIndex(scores: (ActivityScore | undefined)[]): number | null {
+  const best = bestDayIndex(scores);
+  if (best === null) return null;
+  const label = scores[best]?.label;
+  return label && isWorthRecommending(label) ? best : null;
 }
 
 export function ForecastTable({ forecast }: ForecastTableProps) {
@@ -74,7 +89,7 @@ export function ForecastTable({ forecast }: ForecastTableProps) {
             const scores = days.map((day) => day.activities.find((a) => a.activity === activity));
             const allUnavailable =
               scores.length > 0 && scores.every((score) => score && score.score === null);
-            const bestIndex = allUnavailable ? null : bestDayIndex(scores);
+            const bestIndex = allUnavailable ? null : recommendedDayIndex(scores);
 
             return (
               <tbody key={activity} className="border-t border-slate-100">

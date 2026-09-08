@@ -36,6 +36,21 @@ const UNKNOWN_LABEL_STYLE = "bg-slate-100 text-slate-700 ring-slate-300";
 
 export const UNAVAILABLE_STYLE = LABEL_STYLE["Not available"];
 
+// Whether a day is good enough to call out as the week's best. When the whole
+// week is only "Poor", a "Best" badge would read as "go on this day", so no
+// day is marked at all. An unknown label counts as not worth it.
+const WORTH_RECOMMENDING: Record<ScoreLabel, boolean> = {
+  Great: true,
+  OK: true,
+  Poor: false,
+  Bad: false,
+  "Not available": false,
+};
+
+export function isWorthRecommending(label: string): boolean {
+  return Object.hasOwn(WORTH_RECOMMENDING, label) && WORTH_RECOMMENDING[label as ScoreLabel];
+}
+
 // The API types `label` as a plain string, so the lookup has to survive a
 // value this build has never heard of.
 export function labelStyle(label: string): string {
